@@ -1,382 +1,483 @@
-</div>
+<!DOCTYPE html>
+<html lang="ko">
 
-<div class="current-players" id="current-players">
-    <!DOCTYPE html>
-    <html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>또롱쓰 시참시간 관리 사이트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>또롱쓰 시참시간 관리 사이트</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-            body {
-                font-family: 'Arial', sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                padding: 20px;
-            }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
 
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-                background: white;
-                border-radius: 15px;
-                padding: 30px;
-                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-            h1 {
-                text-align: center;
-                color: #333;
-                margin-bottom: 30px;
-                font-size: 2.5em;
-                background: linear-gradient(45deg, #667eea, #764ba2);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-            }
+        .auth-status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #e3f2fd;
+        }
 
+        .auth-btn {
+            margin-left: 10px;
+            padding: 5px 15px;
+            border: none;
+            background: #2196f3;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .modal input {
+            padding: 10px;
+            margin: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            width: 200px;
+        }
+
+        .modal button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .current-players {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            color: #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .current-players h3 {
+            margin-bottom: 15px;
+            text-align: center;
+            color: #333;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-time {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .no-players {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+
+        .search-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .search-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .search-group {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .search-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .sort-select {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .stats {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .timer-item {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .timer-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .timer-item.active {
+            border-color: #28a745;
+            background: #f8fff8;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .name-input {
+            min-width: 140px;
+        }
+
+        .time-input {
+            min-width: 60px;
+            width: auto;
+            padding: 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            text-align: center;
+        }
+
+        .time-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .time-inputs-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .timer-display {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            min-width: 200px;
+            text-align: left;
+            background: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            white-space: nowrap;
+        }
+
+        .timer-display.running {
+            color: #28a745;
+            border-color: #28a745;
+        }
+
+        .star-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            color: #ddd;
+        }
+
+        .star-btn.active {
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .star-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .start-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .start-btn:hover {
+            background: #218838;
+        }
+
+        .stop-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .stop-btn:hover {
+            background: #c82333;
+        }
+
+        .delete-btn {
+            background: #6c757d;
+            color: white;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .delete-btn:hover {
+            background: #5a6268;
+        }
+
+        .usage-log {
+            min-width: 200px;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .usage-log-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .usage-log-content {
+            max-height: 80px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+
+        .usage-log-item {
+            margin-bottom: 4px;
+            padding: 2px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .usage-log-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .add-timer-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+            transition: transform 0.3s ease;
+        }
+
+        .add-timer-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
             .timer-item {
-                background: #f8f9fa;
-                border: 2px solid #e9ecef;
-                border-radius: 12px;
-                padding: 20px;
-                margin-bottom: 15px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 20px;
-                transition: all 0.3s ease;
-            }
-
-            .timer-item:hover {
-                border-color: #667eea;
-                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
-            }
-
-            .timer-item.active {
-                border-color: #28a745;
-                background: #f8fff8;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
             }
 
             .input-group {
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-            }
-
-            .input-group label {
-                font-size: 12px;
-                color: #666;
-                font-weight: bold;
-            }
-
-            input[type="text"],
-            input[type="number"] {
-                padding: 10px;
-                border: 2px solid #dee2e6;
-                border-radius: 8px;
-                font-size: 14px;
-                transition: border-color 0.3s ease;
-            }
-
-            input[type="text"]:focus,
-            input[type="number"]:focus {
-                outline: none;
-                border-color: #667eea;
-            }
-
-            .name-input {
-                min-width: 140px;
-            }
-
-            .time-input {
-                min-width: 60px;
-                width: auto;
-                padding: 8px;
-                border: 2px solid #dee2e6;
-                border-radius: 8px;
-                font-size: 14px;
-                transition: border-color 0.3s ease;
-                text-align: center;
-            }
-
-            .time-input:focus {
-                outline: none;
-                border-color: #667eea;
-            }
-
-            .time-inputs-group {
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-
-            .timer-display {
-                font-size: 16px;
-                font-weight: bold;
-                color: #333;
-                min-width: 200px;
-                text-align: left;
-                background: white;
-                padding: 12px 15px;
-                border-radius: 8px;
-                border: 2px solid #e9ecef;
-                display: flex;
-                align-items: center;
-                gap: 15px;
-                white-space: nowrap;
-            }
-
-            .timer-display.running {
-                color: #28a745;
-                border-color: #28a745;
-            }
-
-            .control-btn {
-                padding: 10px 20px;
-                border: none;
-                border-radius: 8px;
-                font-weight: bold;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                font-size: 14px;
-            }
-
-            .control-group {
-                display: flex;
-                gap: 10px;
-                margin-left: auto;
-            }
-
-            .start-btn {
-                background: #28a745;
-                color: white;
-            }
-
-            .start-btn:hover {
-                background: #218838;
-            }
-
-            .stop-btn {
-                background: #dc3545;
-                color: white;
-            }
-
-            .stop-btn:hover {
-                background: #c82333;
-            }
-
-            .delete-btn {
-                background: #6c757d;
-                color: white;
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-
-            .delete-btn:hover {
-                background: #5a6268;
-            }
-
-            .usage-log {
-                min-width: 200px;
-                background: #f8f9fa;
-                border: 2px solid #e9ecef;
-                border-radius: 8px;
-                padding: 12px;
-                font-size: 12px;
-                color: #666;
-            }
-
-            .usage-log-title {
-                font-weight: bold;
-                margin-bottom: 8px;
-                color: #333;
-            }
-
-            .usage-log-content {
-                max-height: 80px;
-                overflow-y: auto;
-                line-height: 1.4;
-            }
-
-            .usage-log-item {
-                margin-bottom: 4px;
-                padding: 2px 0;
-                border-bottom: 1px solid #eee;
-            }
-
-            .usage-log-item:last-child {
-                border-bottom: none;
-                margin-bottom: 0;
-            }
-
-            .add-timer-btn {
-                background: linear-gradient(45deg, #667eea, #764ba2);
-                color: white;
-                border: none;
-                padding: 15px 30px;
-                border-radius: 10px;
-                font-size: 16px;
-                font-weight: bold;
-                cursor: pointer;
-                display: block;
-                margin: 20px auto;
-                transition: transform 0.3s ease;
-            }
-
-            .add-timer-btn:hover {
-                transform: translateY(-2px);
-            }
-
-            .star-btn {
-                background: none;
-                border: none;
-                font-size: 20px;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                margin-right: 10px;
-                color: #ddd;
-            }
-
-            .star-btn.active {
-                color: #ffd700;
-                text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-            }
-
-            .star-btn:hover {
-                transform: scale(1.2);
-            }
-
-            .current-players {
-                background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-                color: #333;
-                border-radius: 12px;
-                padding: 20px;
-                margin-bottom: 20px;
-            }
-
-            .current-players h3 {
-                margin-bottom: 15px;
-                text-align: center;
-                color: #333;
-            }
-
-            .player-card {
-                background: rgba(255, 255, 255, 0.8);
-                border-radius: 8px;
-                padding: 15px;
-                margin-bottom: 10px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border: 1px solid rgba(102, 126, 234, 0.2);
-            }
-
-            .player-info {
-                display: flex;
+                flex-direction: row;
                 align-items: center;
                 gap: 10px;
             }
+        }
+    </style>
+</head>
 
-            .player-time {
-                font-family: 'Courier New', monospace;
-                font-size: 18px;
-                font-weight: bold;
-                color: #333;
-            }
+<body>
+    <div class="container">
+        <h1>⏰ 또롱쓰 시참시간 관리 사이트</h1>
+        <p style="text-align: center; color: #666; font-size: 14px; margin-top: -15px; margin-bottom: 20px;">Made by.
+            김쨔응</p>
 
-            .no-players {
-                text-align: center;
-                color: #666;
-                font-style: italic;
-            }
+        <!-- 권한 상태 표시 -->
+        <div class="auth-status" id="auth-status">
+            <span id="user-role">👀 일반 사용자 모드 (조회만 가능)</span>
+            <button class="auth-btn" id="admin-login-btn" onclick="showAdminLogin()">관리자 로그인</button>
+        </div>
 
-            @media (max-width: 768px) {
-                .timer-item {
-                    flex-direction: column;
-                    align-items: stretch;
-                    gap: 10px;
-                }
-
-                .input-group {
-                    flex-direction: row;
-                    align-items: center;
-                    gap: 10px;
-                }
-            }
-        </style>
-    </head>
-
-    <body>
-        <div class="container">
-            <h1>⏰ 또롱쓰 시참시간 관리 사이트</h1>
-            <p style="text-align: center; color: #666; font-size: 14px; margin-top: -15px; margin-bottom: 20px;">Made
-                by. 김쨔응</p>
-
-            <!-- 권한 상태 표시 -->
-            <div id="auth-status"
-                style="text-align: center; margin-bottom: 20px; padding: 10px; border-radius: 8px; background: #e3f2fd;">
-                <span id="user-role">👀 일반 사용자 모드 (조회만 가능)</span>
-                <button id="admin-login-btn" onclick="showAdminLogin()"
-                    style="margin-left: 10px; padding: 5px 15px; border: none; background: #2196f3; color: white; border-radius: 5px; cursor: pointer;">관리자
-                    로그인</button>
-            </div>
-
-            <!-- 관리자 로그인 모달 -->
-            <div id="admin-modal"
-                style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
-                <div
-                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; text-align: center;">
-                    <h3>🔐 관리자 로그인</h3>
-                    <input type="password" id="admin-password" placeholder="관리자 비밀번호 입력"
-                        style="padding: 10px; margin: 10px; border: 2px solid #ddd; border-radius: 8px; width: 200px;">
-                    <div style="margin-top: 15px;">
-                        <button onclick="adminLogin()"
-                            style="padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 8px; margin-right: 10px; cursor: pointer;">로그인</button>
-                        <button onclick="hideAdminLogin()"
-                            style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 8px; cursor: pointer;">취소</button>
-                    </div>
+        <!-- 관리자 로그인 모달 -->
+        <div class="modal" id="admin-modal">
+            <div class="modal-content">
+                <h3>🔐 관리자 로그인</h3>
+                <input type="password" id="admin-password" placeholder="관리자 비밀번호 입력">
+                <div>
+                    <button class="btn-success" onclick="adminLogin()">로그인</button>
+                    <button class="btn-danger" onclick="hideAdminLogin()">취소</button>
                 </div>
             </div>
+        </div>
 
-            <!-- 검색 및 정렬 기능 -->
-            <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 300px;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">🔍 이름
-                            검색</label>
-                        <input type="text" id="search-input" placeholder="시청자 닉네임으로 검색..."
-                            style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 14px;"
-                            oninput="filterTimers()">
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">📊 정렬
-                            방식</label>
-                        <select id="sort-select" onchange="renderTimers()"
-                            style="padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 14px; background: white;">
-                            <option value="recent">최근 사용 순</option>
-                            <option value="name">이름 순 (가나다)</option>
-                            <option value="time">남은 시간 순</option>
-                            <option value="active">활성 상태 순</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold; color: #333;">📈 통계</label>
-                        <div style="font-size: 14px; color: #666;">
-                            총 <span id="total-count">0</span>명 | 표시 <span id="visible-count">0</span>명
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- 현재 플레이 중인 인원 -->
+        <div class="current-players" id="current-players">
             <h3>🎮 현재 플레이 중인 인원</h3>
             <div id="active-players-list">
                 <div class="no-players">현재 플레이 중인 멤버가 없습니다.</div>
+            </div>
+        </div>
+
+        <!-- 검색 및 정렬 기능 -->
+        <div class="search-section">
+            <div class="search-controls">
+                <div class="search-group">
+                    <label>🔍 이름 검색</label>
+                    <input type="text" class="search-input" id="search-input" placeholder="시청자 닉네임으로 검색..."
+                        oninput="filterTimers()">
+                </div>
+                <div>
+                    <label>📊 정렬 방식</label>
+                    <select class="sort-select" id="sort-select" onchange="renderTimers()">
+                        <option value="recent">최근 사용 순</option>
+                        <option value="name">이름 순 (가나다)</option>
+                        <option value="time">남은 시간 순</option>
+                        <option value="active">활성 상태 순</option>
+                    </select>
+                </div>
+                <div>
+                    <label>📈 통계</label>
+                    <div class="stats">
+                        총 <span id="total-count">0</span>명 | 표시 <span id="visible-count">0</span>명
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -385,334 +486,313 @@
         </div>
 
         <button class="add-timer-btn" onclick="addTimer()" id="add-timer-btn">+ 줄 추가</button>
-</div>
+    </div>
 
-<script>
-    let timers = [];
-    let timerIdCounter = 0;
-    let isAdmin = false; // 관리자 권한 상태
-    let filteredTimers = []; // 필터링된 타이머들
-    const adminPassword = "ddorong2025"; // 관리자 비밀번호
+    <script>
+        let timers = [];
+        let timerIdCounter = 0;
+        let isAdmin = false;
+        let filteredTimers = [];
+        const adminPassword = "ddorong2025";
 
-    // 관리자 로그인 모달 표시
-    function showAdminLogin() {
-        document.getElementById('admin-modal').style.display = 'block';
-        document.getElementById('admin-password').focus();
-    }
+        // 관리자 로그인 모달 표시
+        function showAdminLogin() {
+            document.getElementById('admin-modal').style.display = 'block';
+            document.getElementById('admin-password').focus();
+        }
 
-    // 관리자 로그인 모달 숨기기
-    function hideAdminLogin() {
-        document.getElementById('admin-modal').style.display = 'none';
-        document.getElementById('admin-password').value = '';
-    }
-
-    // 관리자 로그인
-    function adminLogin() {
-        const password = document.getElementById('admin-password').value;
-        if (password === adminPassword) {
-            isAdmin = true;
-            updateAuthStatus();
-            hideAdminLogin();
-            renderTimers();
-            alert('✅ 관리자 로그인 성공! 모든 기능을 사용할 수 있습니다.');
-        } else {
-            alert('❌ 비밀번호가 잘못되었습니다.');
+        // 관리자 로그인 모달 숨기기
+        function hideAdminLogin() {
+            document.getElementById('admin-modal').style.display = 'none';
             document.getElementById('admin-password').value = '';
         }
-    }
 
-    // 관리자 로그아웃
-    function adminLogout() {
-        isAdmin = false;
-        updateAuthStatus();
-        renderTimers();
-        alert('👋 관리자 로그아웃되었습니다.');
-    }
-
-    // 권한 상태 업데이트
-    function updateAuthStatus() {
-        const userRole = document.getElementById('user-role');
-        const loginBtn = document.getElementById('admin-login-btn');
-
-        if (isAdmin) {
-            userRole.innerHTML = '🔧 관리자 모드 (수정 가능)';
-            loginBtn.innerHTML = '로그아웃';
-            loginBtn.onclick = adminLogout;
-            document.getElementById('auth-status').style.background = '#e8f5e8';
-        } else {
-            userRole.innerHTML = '👀 일반 사용자 모드 (조회만 가능)';
-            loginBtn.innerHTML = '관리자 로그인';
-            loginBtn.onclick = showAdminLogin;
-            document.getElementById('auth-status').style.background = '#e3f2fd';
+        // 관리자 로그인
+        function adminLogin() {
+            const password = document.getElementById('admin-password').value;
+            if (password === adminPassword) {
+                isAdmin = true;
+                updateAuthStatus();
+                hideAdminLogin();
+                renderTimers();
+                alert('✅ 관리자 로그인 성공! 모든 기능을 사용할 수 있습니다.');
+            } else {
+                alert('❌ 비밀번호가 잘못되었습니다.');
+                document.getElementById('admin-password').value = '';
+            }
         }
-    }
 
-    // Enter 키로 로그인
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' && document.getElementById('admin-modal').style.display === 'block') {
-            adminLogin();
-        }
-    });
-
-    // 로컬 스토리지에서 데이터 로드
-    function loadData() {
-        const savedTimers = localStorage.getItem('timeManagerTimers');
-        if (savedTimers) {
-            timers = JSON.parse(savedTimers);
-            // 기존 데이터에 필드가 없으면 추가
-            timers.forEach(timer => {
-                if (timer.totalSeconds === undefined) {
-                    timer.totalSeconds = 0;
-                }
-                if (timer.totalHours === undefined) {
-                    timer.totalHours = 0;
-                }
-                if (timer.isActive === undefined) {
-                    timer.isActive = false;
-                }
-                if (timer.lastUsed === undefined) {
-                    timer.lastUsed = Date.now(); // 기존 데이터에 현재 시간으로 설정
-                }
-            });
-            timerIdCounter = Math.max(...timers.map(t => t.id), 0) + 1;
+        // 관리자 로그아웃
+        function adminLogout() {
+            isAdmin = false;
+            updateAuthStatus();
             renderTimers();
-        } else {
-            // 초기 타이머 하나 추가
-            addTimer();
-        }
-    }
-
-    // 로컬 스토리지에 데이터 저장
-    function saveData() {
-        localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
-    }
-
-    // 새 타이머 추가
-    function addTimer() {
-        if (!isAdmin) {
-            alert('❌ 관리자만 타이머를 추가할 수 있습니다.');
-            return;
+            alert('👋 관리자 로그아웃되었습니다.');
         }
 
-        const newTimer = {
-            id: timerIdCounter++,
-            name: '',
-            totalHours: 0,
-            totalMinutes: 0,
-            totalSeconds: 0,
-            currentTime: 0,
-            isRunning: false,
-            isActive: false, // 현재 플레이 중인지 여부
-            startTime: null,
-            lastUsed: Date.now(), // 마지막 사용 시간 추가
-            usageLog: []
-        };
+        // 권한 상태 업데이트
+        function updateAuthStatus() {
+            const userRole = document.getElementById('user-role');
+            const loginBtn = document.getElementById('admin-login-btn');
+            const authStatus = document.getElementById('auth-status');
 
-        timers.push(newTimer);
-        renderTimers();
-        renderActivePlayers();
-        saveData();
-    }
-
-    // 타이머 삭제
-    function deleteTimer(id) {
-        if (!isAdmin) {
-            alert('❌ 관리자만 타이머를 삭제할 수 있습니다.');
-            return;
+            if (isAdmin) {
+                userRole.innerHTML = '🔧 관리자 모드 (수정 가능)';
+                loginBtn.innerHTML = '로그아웃';
+                loginBtn.onclick = adminLogout;
+                authStatus.style.background = '#e8f5e8';
+            } else {
+                userRole.innerHTML = '👀 일반 사용자 모드 (조회만 가능)';
+                loginBtn.innerHTML = '관리자 로그인';
+                loginBtn.onclick = showAdminLogin;
+                authStatus.style.background = '#e3f2fd';
+            }
         }
 
-        if (confirm('정말로 이 타이머를 삭제하시겠습니까?')) {
-            timers = timers.filter(timer => timer.id !== id);
+        // Enter 키로 로그인
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && document.getElementById('admin-modal').style.display === 'block') {
+                adminLogin();
+            }
+        });
+
+        // 로컬 스토리지에서 데이터 로드
+        function loadData() {
+            const savedTimers = localStorage.getItem('timeManagerTimers');
+            if (savedTimers) {
+                timers = JSON.parse(savedTimers);
+                timers.forEach(timer => {
+                    if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
+                    if (timer.totalHours === undefined) timer.totalHours = 0;
+                    if (timer.isActive === undefined) timer.isActive = false;
+                    if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
+                });
+                timerIdCounter = Math.max(...timers.map(t => t.id), 0) + 1;
+                renderTimers();
+            } else {
+                addTimer();
+            }
+        }
+
+        // 로컬 스토리지에 데이터 저장
+        function saveData() {
+            localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
+        }
+
+        // 새 타이머 추가
+        function addTimer() {
+            if (!isAdmin) {
+                alert('❌ 관리자만 타이머를 추가할 수 있습니다.');
+                return;
+            }
+
+            const newTimer = {
+                id: timerIdCounter++,
+                name: '',
+                totalHours: 0,
+                totalMinutes: 0,
+                totalSeconds: 0,
+                currentTime: 0,
+                isRunning: false,
+                isActive: false,
+                startTime: null,
+                lastUsed: Date.now(),
+                usageLog: []
+            };
+
+            timers.push(newTimer);
             renderTimers();
             renderActivePlayers();
             saveData();
         }
-    }
 
-    // 플레이어 활성 상태 토글
-    function togglePlayerActive(id) {
-        if (!isAdmin) {
-            alert('❌ 관리자만 플레이어 상태를 변경할 수 있습니다.');
-            return;
-        }
-
-        const timer = timers.find(t => t.id === id);
-        if (!timer) return;
-
-        const activePlayers = timers.filter(t => t.isActive).length;
-
-        if (!timer.isActive && activePlayers >= 3) {
-            alert('최대 3명까지만 동시에 플레이할 수 있습니다!');
-            return;
-        }
-
-        timer.isActive = !timer.isActive;
-        timer.lastUsed = Date.now(); // 상태 변경 시에도 최근 사용으로 업데이트
-
-        // 비활성화되면 타이머도 정지
-        if (!timer.isActive && timer.isRunning) {
-            toggleTimer(id);
-        }
-
-        renderTimers();
-        renderActivePlayers();
-        saveData();
-    }
-
-    // 타이머 시작/정지
-    function toggleTimer(id) {
-        if (!isAdmin) {
-            alert('❌ 관리자만 타이머를 제어할 수 있습니다.');
-            return;
-        }
-
-        const timer = timers.find(t => t.id === id);
-        if (!timer) return;
-
-        // 타이머 사용 시 lastUsed 업데이트
-        timer.lastUsed = Date.now();
-
-        if (timer.isRunning) {
-            // 정지
-            timer.isRunning = false;
-            const endTime = Date.now();
-            const usedTime = Math.floor((endTime - timer.startTime) / 1000);
-            const usedHours = Math.floor(usedTime / 3600);
-            const usedMinutes = Math.floor((usedTime % 3600) / 60);
-
-            // 사용 로그 추가
-            const now = new Date();
-            const logEntry = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}: ${usedHours}시간 ${usedMinutes}분 사용`;
-            timer.usageLog.unshift(logEntry);
-
-            // 로그는 최대 10개까지만 보관
-            if (timer.usageLog.length > 10) {
-                timer.usageLog = timer.usageLog.slice(0, 10);
-            }
-
-            timer.startTime = null;
-        } else {
-            // 시작 - 보유 시간이 있는지 확인
-            const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
-            if (totalSeconds <= timer.currentTime) {
-                alert('보유 시간이 부족합니다!');
+        // 타이머 삭제
+        function deleteTimer(id) {
+            if (!isAdmin) {
+                alert('❌ 관리자만 타이머를 삭제할 수 있습니다.');
                 return;
             }
 
-            timer.isRunning = true;
-            timer.startTime = Date.now();
+            if (confirm('정말로 이 타이머를 삭제하시겠습니까?')) {
+                timers = timers.filter(timer => timer.id !== id);
+                renderTimers();
+                renderActivePlayers();
+                saveData();
+            }
         }
 
-        renderTimers();
-        saveData();
-    }
+        // 플레이어 활성 상태 토글
+        function togglePlayerActive(id) {
+            if (!isAdmin) {
+                alert('❌ 관리자만 플레이어 상태를 변경할 수 있습니다.');
+                return;
+            }
 
-    // 시간 형식 변환 (초 -> 시:분:초)
-    function formatTime(seconds) {
-        // NaN 체크
-        if (isNaN(seconds) || seconds < 0) {
-            seconds = 0;
+            const timer = timers.find(t => t.id === id);
+            if (!timer) return;
+
+            const activePlayers = timers.filter(t => t.isActive).length;
+
+            if (!timer.isActive && activePlayers >= 3) {
+                alert('최대 3명까지만 동시에 플레이할 수 있습니다!');
+                return;
+            }
+
+            timer.isActive = !timer.isActive;
+            timer.lastUsed = Date.now();
+
+            if (!timer.isActive && timer.isRunning) {
+                toggleTimer(id);
+            }
+
+            renderTimers();
+            renderActivePlayers();
+            saveData();
         }
 
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
+        // 타이머 시작/정지
+        function toggleTimer(id) {
+            if (!isAdmin) {
+                alert('❌ 관리자만 타이머를 제어할 수 있습니다.');
+                return;
+            }
 
-    // 타이머 업데이트 (매초마다 실행)
-    function updateTimers() {
-        let updated = false;
-        const now = Date.now();
+            const timer = timers.find(t => t.id === id);
+            if (!timer) return;
 
-        timers.forEach(timer => {
-            if (timer.isRunning && timer.startTime) {
-                const elapsed = Math.floor((now - timer.startTime) / 1000);
-                timer.currentTime = Math.min(
-                    timer.currentTime + 1,
-                    (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds
-                );
+            timer.lastUsed = Date.now();
 
-                // 시간이 다 소모되면 자동 정지
-                if (timer.currentTime >= (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds) {
-                    timer.isRunning = false;
-                    timer.startTime = null;
-                    alert(`${timer.name || '타이머'}의 시간이 모두 소모되었습니다!`);
+            if (timer.isRunning) {
+                timer.isRunning = false;
+                const endTime = Date.now();
+                const usedTime = Math.floor((endTime - timer.startTime) / 1000);
+                const usedHours = Math.floor(usedTime / 3600);
+                const usedMinutes = Math.floor((usedTime % 3600) / 60);
+
+                const now = new Date();
+                const logEntry = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}: ${usedHours}시간 ${usedMinutes}분 사용`;
+                timer.usageLog.unshift(logEntry);
+
+                if (timer.usageLog.length > 10) {
+                    timer.usageLog = timer.usageLog.slice(0, 10);
                 }
 
-                updated = true;
-            }
-        });
+                timer.startTime = null;
+            } else {
+                const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
+                if (totalSeconds <= timer.currentTime) {
+                    alert('보유 시간이 부족합니다!');
+                    return;
+                }
 
-        if (updated) {
+                timer.isRunning = true;
+                timer.startTime = Date.now();
+            }
+
             renderTimers();
             saveData();
         }
-    }
 
-    // 타이머 필터링 및 정렬
-    function getFilteredAndSortedTimers() {
-        const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
-        const sortBy = document.getElementById('sort-select')?.value || 'recent';
+        // 시간 형식 변환
+        function formatTime(seconds) {
+            if (isNaN(seconds) || seconds < 0) {
+                seconds = 0;
+            }
 
-        // 검색 필터링
-        let filtered = timers.filter(timer =>
-            timer.name.toLowerCase().includes(searchTerm)
-        );
-
-        // 정렬
-        switch (sortBy) {
-            case 'recent':
-                filtered.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
-                break;
-            case 'name':
-                filtered.sort((a, b) => a.name.localeCompare(b.name));
-                break;
-            case 'time':
-                filtered.sort((a, b) => {
-                    const aTotal = (a.totalHours * 3600) + (a.totalMinutes * 60) + a.totalSeconds - a.currentTime;
-                    const bTotal = (b.totalHours * 3600) + (b.totalMinutes * 60) + b.totalSeconds - b.currentTime;
-                    return bTotal - aTotal;
-                });
-                break;
-            case 'active':
-                filtered.sort((a, b) => {
-                    if (a.isActive && !b.isActive) return -1;
-                    if (!a.isActive && b.isActive) return 1;
-                    if (a.isRunning && !b.isRunning) return -1;
-                    if (!a.isRunning && b.isRunning) return 1;
-                    return (b.lastUsed || 0) - (a.lastUsed || 0);
-                });
-                break;
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
-        return filtered;
-    }
+        // 타이머 업데이트
+        function updateTimers() {
+            let updated = false;
+            const now = Date.now();
 
-    // 타이머 필터링 (검색)
-    function filterTimers() {
-        renderTimers();
-    }
-    // 타이머 렌더링
-    function renderTimers() {
-        const container = document.getElementById('timers-container');
-        container.innerHTML = '';
+            timers.forEach(timer => {
+                if (timer.isRunning && timer.startTime) {
+                    timer.currentTime = Math.min(
+                        timer.currentTime + 1,
+                        (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds
+                    );
 
-        // 필터링 및 정렬된 타이머 가져오기
-        filteredTimers = getFilteredAndSortedTimers();
+                    if (timer.currentTime >= (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds) {
+                        timer.isRunning = false;
+                        timer.startTime = null;
+                        alert(`${timer.name || '타이머'}의 시간이 모두 소모되었습니다!`);
+                    }
 
-        // 통계 업데이트
-        document.getElementById('total-count').textContent = timers.length;
-        document.getElementById('visible-count').textContent = filteredTimers.length;
+                    updated = true;
+                }
+            });
 
-        filteredTimers.forEach(timer => {
-            const timerElement = document.createElement('div');
-            timerElement.className = `timer-item ${timer.isRunning ? 'active' : ''}`;
+            if (updated) {
+                renderTimers();
+                saveData();
+            }
+        }
 
-            const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
-            const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
+        // 타이머 필터링 및 정렬
+        function getFilteredAndSortedTimers() {
+            const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+            const sortBy = document.getElementById('sort-select')?.value || 'recent';
 
-            timerElement.innerHTML = `
+            let filtered = timers.filter(timer =>
+                timer.name.toLowerCase().includes(searchTerm)
+            );
+
+            switch (sortBy) {
+                case 'recent':
+                    filtered.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+                    break;
+                case 'name':
+                    filtered.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'time':
+                    filtered.sort((a, b) => {
+                        const aTotal = (a.totalHours * 3600) + (a.totalMinutes * 60) + a.totalSeconds - a.currentTime;
+                        const bTotal = (b.totalHours * 3600) + (b.totalMinutes * 60) + b.totalSeconds - b.currentTime;
+                        return bTotal - aTotal;
+                    });
+                    break;
+                case 'active':
+                    filtered.sort((a, b) => {
+                        if (a.isActive && !b.isActive) return -1;
+                        if (!a.isActive && b.isActive) return 1;
+                        if (a.isRunning && !b.isRunning) return -1;
+                        if (!a.isRunning && b.isRunning) return 1;
+                        return (b.lastUsed || 0) - (a.lastUsed || 0);
+                    });
+                    break;
+            }
+
+            return filtered;
+        }
+
+        // 타이머 필터링
+        function filterTimers() {
+            renderTimers();
+        }
+
+        // 타이머 렌더링
+        function renderTimers() {
+            const container = document.getElementById('timers-container');
+            container.innerHTML = '';
+
+            filteredTimers = getFilteredAndSortedTimers();
+
+            document.getElementById('total-count').textContent = timers.length;
+            document.getElementById('visible-count').textContent = filteredTimers.length;
+
+            filteredTimers.forEach(timer => {
+                const timerElement = document.createElement('div');
+                timerElement.className = `timer-item ${timer.isRunning ? 'active' : ''}`;
+
+                const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
+                const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
+
+                timerElement.innerHTML = `
                     <button class="star-btn ${timer.isActive ? 'active' : ''}" 
                             onclick="togglePlayerActive(${timer.id})" ${!isAdmin ? 'disabled' : ''}>
                         ${timer.isActive ? '⭐' : '☆'}
@@ -760,42 +840,41 @@
                         <div class="usage-log-title">📝 사용 기록</div>
                         <div class="usage-log-content">
                             ${timer.usageLog.length > 0 ?
-                    timer.usageLog.slice(0, 4).map(log =>
-                        `<div class="usage-log-item">${log}</div>`
-                    ).join('')
-                    : '<div class="usage-log-item" style="color: #999; font-style: italic;">기록이 없습니다</div>'
-                }
+                        timer.usageLog.slice(0, 4).map(log =>
+                            `<div class="usage-log-item">${log}</div>`
+                        ).join('')
+                        : '<div class="usage-log-item" style="color: #999; font-style: italic;">기록이 없습니다</div>'
+                    }
                         </div>
                     </div>
                 `;
 
-            container.appendChild(timerElement);
-        });
+                container.appendChild(timerElement);
+            });
 
-        renderActivePlayers();
+            renderActivePlayers();
 
-        // 줄 추가 버튼 표시/숨기기
-        const addTimerBtn = document.getElementById('add-timer-btn');
-        if (addTimerBtn) {
-            addTimerBtn.style.display = isAdmin ? 'block' : 'none';
-        }
-    }
-
-    // 현재 플레이 중인 멤버들 렌더링
-    function renderActivePlayers() {
-        const activePlayersList = document.getElementById('active-players-list');
-        const activePlayers = timers.filter(timer => timer.isActive);
-
-        if (activePlayers.length === 0) {
-            activePlayersList.innerHTML = '<div class="no-players">현재 플레이 중인 멤버가 없습니다.</div>';
-            return;
+            const addTimerBtn = document.getElementById('add-timer-btn');
+            if (addTimerBtn) {
+                addTimerBtn.style.display = isAdmin ? 'block' : 'none';
+            }
         }
 
-        activePlayersList.innerHTML = activePlayers.map(timer => {
-            const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
-            const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
+        // 현재 플레이 중인 멤버들 렌더링
+        function renderActivePlayers() {
+            const activePlayersList = document.getElementById('active-players-list');
+            const activePlayers = timers.filter(timer => timer.isActive);
 
-            return `
+            if (activePlayers.length === 0) {
+                activePlayersList.innerHTML = '<div class="no-players">현재 플레이 중인 멤버가 없습니다.</div>';
+                return;
+            }
+
+            activePlayersList.innerHTML = activePlayers.map(timer => {
+                const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
+                const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
+
+                return `
                     <div class="player-card">
                         <div class="player-info">
                             <span>⭐</span>
@@ -805,66 +884,66 @@
                         <div class="player-time">${formatTime(remainingSeconds)}</div>
                     </div>
                 `;
-        }).join('');
-    }
-
-    // 타이머 이름 업데이트
-    function updateTimerName(id, name) {
-        if (!isAdmin) return;
-
-        const timer = timers.find(t => t.id === id);
-        if (timer) {
-            timer.name = name;
-            timer.lastUsed = Date.now(); // 이름 변경 시에도 최근 사용으로 업데이트
-            saveData();
-            renderTimers(); // 정렬 업데이트를 위해 다시 렌더링
+            }).join('');
         }
-    }
 
-    // 타이머 시간 업데이트
-    function updateTimerHours(id, hours) {
-        if (!isAdmin) return;
+        // 타이머 이름 업데이트
+        function updateTimerName(id, name) {
+            if (!isAdmin) return;
 
-        const timer = timers.find(t => t.id === id);
-        if (timer) {
-            timer.totalHours = parseInt(hours) || 0;
-            timer.lastUsed = Date.now(); // 시간 변경 시에도 최근 사용으로 업데이트
-            saveData();
-            renderTimers();
+            const timer = timers.find(t => t.id === id);
+            if (timer) {
+                timer.name = name;
+                timer.lastUsed = Date.now();
+                saveData();
+                renderTimers();
+            }
         }
-    }
 
-    function updateTimerMinutes(id, minutes) {
-        if (!isAdmin) return;
+        // 타이머 시간 업데이트
+        function updateTimerHours(id, hours) {
+            if (!isAdmin) return;
 
-        const timer = timers.find(t => t.id === id);
-        if (timer) {
-            timer.totalMinutes = parseInt(minutes) || 0;
-            timer.lastUsed = Date.now();
-            saveData();
-            renderTimers();
+            const timer = timers.find(t => t.id === id);
+            if (timer) {
+                timer.totalHours = parseInt(hours) || 0;
+                timer.lastUsed = Date.now();
+                saveData();
+                renderTimers();
+            }
         }
-    }
 
-    function updateTimerSeconds(id, seconds) {
-        if (!isAdmin) return;
+        function updateTimerMinutes(id, minutes) {
+            if (!isAdmin) return;
 
-        const timer = timers.find(t => t.id === id);
-        if (timer) {
-            timer.totalSeconds = parseInt(seconds) || 0;
-            timer.lastUsed = Date.now();
-            saveData();
-            renderTimers();
+            const timer = timers.find(t => t.id === id);
+            if (timer) {
+                timer.totalMinutes = parseInt(minutes) || 0;
+                timer.lastUsed = Date.now();
+                saveData();
+                renderTimers();
+            }
         }
-    }
 
-    // 초기화 및 주기적 업데이트
-    window.onload = function () {
-        updateAuthStatus(); // 권한 상태 초기화
-        loadData();
-        setInterval(updateTimers, 1000); // 매초마다 업데이트
-    };
-</script>
+        function updateTimerSeconds(id, seconds) {
+            if (!isAdmin) return;
+
+            const timer = timers.find(t => t.id === id);
+            if (timer) {
+                timer.totalSeconds = parseInt(seconds) || 0;
+                timer.lastUsed = Date.now();
+                saveData();
+                renderTimers();
+            }
+        }
+
+        // 초기화 및 주기적 업데이트
+        window.onload = function () {
+            updateAuthStatus();
+            loadData();
+            setInterval(updateTimers, 1000);
+        };
+    </script>
 </body>
 
 </html>
