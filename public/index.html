@@ -313,6 +313,32 @@
         <p style="text-align: center; color: #666; font-size: 14px; margin-top: -15px; margin-bottom: 20px;">Made by.
             김쨔응</p>
 
+        <!-- 권한 상태 표시 -->
+        <div id="auth-status"
+            style="text-align: center; margin-bottom: 20px; padding: 10px; border-radius: 8px; background: #e3f2fd;">
+            <span id="user-role">👀 일반 사용자 모드 (조회만 가능)</span>
+            <button id="admin-login-btn" onclick="showAdminLogin()"
+                style="margin-left: 10px; padding: 5px 15px; border: none; background: #2196f3; color: white; border-radius: 5px; cursor: pointer;">관리자
+                로그인</button>
+        </div>
+
+        <!-- 관리자 로그인 모달 -->
+        <div id="admin-modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+            <div
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 15px; text-align: center;">
+                <h3>🔐 관리자 로그인</h3>
+                <input type="password" id="admin-password" placeholder="관리자 비밀번호 입력"
+                    style="padding: 10px; margin: 10px; border: 2px solid #ddd; border-radius: 8px; width: 200px;">
+                <div style="margin-top: 15px;">
+                    <button onclick="adminLogin()"
+                        style="padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 8px; margin-right: 10px; cursor: pointer;">로그인</button>
+                    <button onclick="hideAdminLogin()"
+                        style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 8px; cursor: pointer;">취소</button>
+                </div>
+            </div>
+        </div>
+
         <div class="current-players" id="current-players">
             <h3>🎮 현재 플레이 중인 인원</h3>
             <div id="active-players-list">
@@ -324,12 +350,74 @@
             <!-- 타이머 항목들이 여기에 추가됩니다 -->
         </div>
 
-        <button class="add-timer-btn" onclick="addTimer()">+ 줄 추가</button>
+        <button class="add-timer-btn" onclick="addTimer()" id="add-timer-btn">+ 줄 추가</button>
     </div>
 
     <script>
         let timers = [];
         let timerIdCounter = 0;
+        let isAdmin = false; // 관리자 권한 상태
+        const adminPassword = "ddorong2025"; // 관리자 비밀번호
+
+        // 관리자 로그인 모달 표시
+        function showAdminLogin() {
+            document.getElementById('admin-modal').style.display = 'block';
+            document.getElementById('admin-password').focus();
+        }
+
+        // 관리자 로그인 모달 숨기기
+        function hideAdminLogin() {
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('admin-password').value = '';
+        }
+
+        // 관리자 로그인
+        function adminLogin() {
+            const password = document.getElementById('admin-password').value;
+            if (password === adminPassword) {
+                isAdmin = true;
+                updateAuthStatus();
+                hideAdminLogin();
+                renderTimers();
+                alert('✅ 관리자 로그인 성공! 모든 기능을 사용할 수 있습니다.');
+            } else {
+                alert('❌ 비밀번호가 잘못되었습니다.');
+                document.getElementById('admin-password').value = '';
+            }
+        }
+
+        // 관리자 로그아웃
+        function adminLogout() {
+            isAdmin = false;
+            updateAuthStatus();
+            renderTimers();
+            alert('👋 관리자 로그아웃되었습니다.');
+        }
+
+        // 권한 상태 업데이트
+        function updateAuthStatus() {
+            const userRole = document.getElementById('user-role');
+            const loginBtn = document.getElementById('admin-login-btn');
+
+            if (isAdmin) {
+                userRole.innerHTML = '🔧 관리자 모드 (수정 가능)';
+                loginBtn.innerHTML = '로그아웃';
+                loginBtn.onclick = adminLogout;
+                document.getElementById('auth-status').style.background = '#e8f5e8';
+            } else {
+                userRole.innerHTML = '👀 일반 사용자 모드 (조회만 가능)';
+                loginBtn.innerHTML = '관리자 로그인';
+                loginBtn.onclick = showAdminLogin;
+                document.getElementById('auth-status').style.background = '#e3f2fd';
+            }
+        }
+
+        // Enter 키로 로그인
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && document.getElementById('admin-modal').style.display === 'block') {
+                adminLogin();
+            }
+        });
 
         // 로컬 스토리지에서 데이터 로드
         function loadData() {
@@ -363,6 +451,11 @@
 
         // 새 타이머 추가
         function addTimer() {
+            if (!isAdmin) {
+                alert('❌ 관리자만 타이머를 추가할 수 있습니다.');
+                return;
+            }
+
             const newTimer = {
                 id: timerIdCounter++,
                 name: '',
@@ -384,6 +477,11 @@
 
         // 타이머 삭제
         function deleteTimer(id) {
+            if (!isAdmin) {
+                alert('❌ 관리자만 타이머를 삭제할 수 있습니다.');
+                return;
+            }
+
             if (confirm('정말로 이 타이머를 삭제하시겠습니까?')) {
                 timers = timers.filter(timer => timer.id !== id);
                 renderTimers();
@@ -394,6 +492,11 @@
 
         // 플레이어 활성 상태 토글
         function togglePlayerActive(id) {
+            if (!isAdmin) {
+                alert('❌ 관리자만 플레이어 상태를 변경할 수 있습니다.');
+                return;
+            }
+
             const timer = timers.find(t => t.id === id);
             if (!timer) return;
 
@@ -418,6 +521,11 @@
 
         // 타이머 시작/정지
         function toggleTimer(id) {
+            if (!isAdmin) {
+                alert('❌ 관리자만 타이머를 제어할 수 있습니다.');
+                return;
+            }
+
             const timer = timers.find(t => t.id === id);
             if (!timer) return;
 
@@ -513,27 +621,31 @@
 
                 timerElement.innerHTML = `
                     <button class="star-btn ${timer.isActive ? 'active' : ''}" 
-                            onclick="togglePlayerActive(${timer.id})">
+                            onclick="togglePlayerActive(${timer.id})" ${!isAdmin ? 'disabled' : ''}>
                         ${timer.isActive ? '⭐' : '☆'}
                     </button>
                             
                     <div class="input-group">
                         <label>닉네임(시청자 닉네임)</label>
                         <input type="text" class="name-input" value="${timer.name}" 
-                               onchange="updateTimerName(${timer.id}, this.value)" placeholder="시청자 닉네임">
+                               onchange="updateTimerName(${timer.id}, this.value)" 
+                               placeholder="시청자 닉네임" ${!isAdmin ? 'readonly' : ''}>
                     </div>
                     
                     <div class="input-group">
                         <label>보유 시간</label>
                         <div class="time-inputs-group">
                             <input type="number" class="time-input" value="${timer.totalHours}" min="0" max="23"
-                                   onchange="updateTimerHours(${timer.id}, this.value)" placeholder="0">
+                                   onchange="updateTimerHours(${timer.id}, this.value)" 
+                                   placeholder="0" ${!isAdmin ? 'readonly' : ''}>
                             <span>:</span>
                             <input type="number" class="time-input" value="${timer.totalMinutes}" min="0" max="59"
-                                   onchange="updateTimerMinutes(${timer.id}, this.value)" placeholder="0">
+                                   onchange="updateTimerMinutes(${timer.id}, this.value)" 
+                                   placeholder="0" ${!isAdmin ? 'readonly' : ''}>
                             <span>:</span>
                             <input type="number" class="time-input" value="${timer.totalSeconds}" min="0" max="59"
-                                   onchange="updateTimerSeconds(${timer.id}, this.value)" placeholder="0">
+                                   onchange="updateTimerSeconds(${timer.id}, this.value)" 
+                                   placeholder="0" ${!isAdmin ? 'readonly' : ''}>
                         </div>
                     </div>
                     
@@ -542,7 +654,7 @@
                         <span style="font-family: 'Courier New', monospace; font-size: 18px;">${formatTime(remainingSeconds)}</span>
                     </div>
                     
-                    <div class="control-group">
+                    <div class="control-group" ${!isAdmin ? 'style="display: none;"' : ''}>
                         <button class="control-btn ${timer.isRunning ? 'stop-btn' : 'start-btn'}" 
                                 onclick="toggleTimer(${timer.id})">
                             ${timer.isRunning ? 'STOP' : 'START'}
@@ -568,6 +680,12 @@
             });
 
             renderActivePlayers();
+
+            // 줄 추가 버튼 표시/숨기기
+            const addTimerBtn = document.getElementById('add-timer-btn');
+            if (addTimerBtn) {
+                addTimerBtn.style.display = isAdmin ? 'block' : 'none';
+            }
         }
 
         // 현재 플레이 중인 멤버들 렌더링
@@ -599,6 +717,8 @@
 
         // 타이머 이름 업데이트
         function updateTimerName(id, name) {
+            if (!isAdmin) return;
+
             const timer = timers.find(t => t.id === id);
             if (timer) {
                 timer.name = name;
@@ -608,6 +728,8 @@
 
         // 타이머 시간 업데이트
         function updateTimerHours(id, hours) {
+            if (!isAdmin) return;
+
             const timer = timers.find(t => t.id === id);
             if (timer) {
                 timer.totalHours = parseInt(hours) || 0;
@@ -617,6 +739,8 @@
         }
 
         function updateTimerMinutes(id, minutes) {
+            if (!isAdmin) return;
+
             const timer = timers.find(t => t.id === id);
             if (timer) {
                 timer.totalMinutes = parseInt(minutes) || 0;
@@ -626,6 +750,8 @@
         }
 
         function updateTimerSeconds(id, seconds) {
+            if (!isAdmin) return;
+
             const timer = timers.find(t => t.id === id);
             if (timer) {
                 timer.totalSeconds = parseInt(seconds) || 0;
@@ -636,6 +762,7 @@
 
         // 초기화 및 주기적 업데이트
         window.onload = function () {
+            updateAuthStatus(); // 권한 상태 초기화
             loadData();
             setInterval(updateTimers, 1000); // 매초마다 업데이트
         };
