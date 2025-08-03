@@ -292,6 +292,12 @@
             border-color: #28a745;
         }
 
+        .timer-display.warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
         .star-btn {
             background: none;
             border: none;
@@ -488,12 +494,48 @@
         <button class="add-timer-btn" onclick="addTimer()" id="add-timer-btn">+ 줄 추가</button>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
+        // 전역 변수 먼저 선언
         let timers = [];
         let timerIdCounter = 0;
         let isAdmin = false;
         let filteredTimers = [];
+        let isOnline = true;
+        let db = null;
+
         const adminPassword = "ddorong2025";
+
+        // Firebase 초기화 함수
+        function initializeFirebase() {
+            try {
+                // Firebase 설정
+                const firebaseConfig = {
+                    apiKey: "AIzaSyC58p7biMiAmXw6nGa3kTJyy2lgTq_9ZdY",
+                    authDomain: "ddorong-timer.firebaseapp.com",
+                    projectId: "ddorong-timer",
+                    storageBucket: "ddorong-timer.firebasestorage.app",
+                    messagingSenderId: "868980396992",
+                    appId: "1:868980396992:web:5cfa9346a557cd00412e25",
+                    measurementId: "G-P5Y6GLY1Y4"
+                };
+
+                // Firebase 초기화
+                if (typeof firebase !== 'undefined') {
+                    firebase.initializeApp(firebaseConfig);
+                    db = firebase.firestore();
+                    isOnline = true;
+                    console.log('✅ Firebase 연결 성공');
+                } else {
+                    throw new Error('Firebase not loaded');
+                }
+            } catch (error) {
+                console.error('❌ Firebase 연결 실패:', error);
+                isOnline = false;
+                db = null;
+            }
+        }
 
         // 관리자 로그인 모달 표시
         function showAdminLogin() {
@@ -556,8 +598,53 @@
             }
         });
 
-        // 로컬 스토리지에서 데이터 로드
+        // Firebase에서 데이터 로드
         function loadData() {
+            if (!isOnline || !db) {
+                loadLocalData();
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                // 실시간 리스너 설정
+                db.collection('timers').onSnapshot((snapshot) => {
+                    timers = [];
+                    timerIdCounter = 0;
+
+                    snapshot.forEach((doc) => {
+                        const timer = { id: doc.id, ...doc.data() };
+
+                        // 필요한 필드 추가
+                        if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
+                        if (timer.totalHours === undefined) timer.totalHours = 0;
+                        if (timer.isActive === undefined) timer.isActive = false;
+                        if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
+                        if (timer.usageLog === undefined) timer.usageLog = [];
+
+                        timers.push(timer);
+                        timerIdCounter = Math.max(timerIdCounter, parseInt(timer.id) + 1);
+                    });
+
+                    renderTimers();
+                    showLoading(false);
+                }, (error) => {
+                    console.error("Error loading data:", error);
+                    isOnline = false;
+                    loadLocalData();
+                    showLoading(false);
+                });
+            } catch (error) {
+                console.error("Error setting up listener:", error);
+                isOnline = false;
+                loadLocalData();
+                showLoading(false);
+            }
+        }
+
+        // 로컬 스토리지에서 데이터 로드 (오프라인 백업)
+        function loadLocalData() {
             const savedTimers = localStorage.getItem('timeManagerTimers');
             if (savedTimers) {
                 timers = JSON.parse(savedTimers);
@@ -567,16 +654,51 @@
                     if (timer.isActive === undefined) timer.isActive = false;
                     if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
                 });
-                timerIdCounter = Math.max(...timers.map(t => t.id), 0) + 1;
+                timerIdCounter = Math.max(...timers.map(t => parseInt(t.id)), 0) + 1;
                 renderTimers();
             } else {
                 addTimer();
             }
         }
 
-        // 로컬 스토리지에 데이터 저장
+        // Firebase에 데이터 저장
         function saveData() {
+            // 로컬에도 백업 저장
             localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
+
+            if (!isOnline || !db) return;
+
+            try {
+                // Firebase에 저장하되 각 타이머를 개별 문서로
+                timers.forEach(timer => {
+                    db.collection('timers').doc(timer.id.toString()).set(timer)
+                        .catch(error => {
+                            console.error("Error saving timer:", error);
+                            isOnline = false;
+                        });
+                });
+            } catch (error) {
+                console.error("Error in saveData:", error);
+                isOnline = false;
+            }
+        }
+
+        // 로딩 표시
+        function showLoading(show) {
+            const existingLoader = document.getElementById('loading');
+            if (show) {
+                if (!existingLoader) {
+                    const loader = document.createElement('div');
+                    loader.id = 'loading';
+                    loader.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:20px;border-radius:10px;z-index:9999;';
+                    loader.innerHTML = '🔄 데이터 동기화 중...';
+                    document.body.appendChild(loader);
+                }
+            } else {
+                if (existingLoader) {
+                    existingLoader.remove();
+                }
+            }
         }
 
         // 새 타이머 추가
@@ -606,7 +728,7 @@
             saveData();
         }
 
-        // 타이머 삭제
+        // 타이머 삭제 (Firebase에서도 삭제)
         function deleteTimer(id) {
             if (!isAdmin) {
                 alert('❌ 관리자만 타이머를 삭제할 수 있습니다.');
@@ -614,11 +736,44 @@
             }
 
             if (confirm('정말로 이 타이머를 삭제하시겠습니까?')) {
+                // Firebase에서 삭제
+                if (isOnline && db) {
+                    try {
+                        db.collection('timers').doc(id.toString()).delete()
+                            .catch(error => console.error("Error deleting timer:", error));
+                    } catch (error) {
+                        console.error("Error in deleteTimer:", error);
+                    }
+                }
+
                 timers = timers.filter(timer => timer.id !== id);
                 renderTimers();
                 renderActivePlayers();
                 saveData();
             }
+        }
+
+        // 시간 완전 소모 시 자동 삭제
+        function autoDeleteTimer(id) {
+            const timer = timers.find(t => t.id === id);
+            if (!timer) return;
+
+            // Firebase에서 삭제
+            if (isOnline && db) {
+                try {
+                    db.collection('timers').doc(id.toString()).delete()
+                        .catch(error => console.error("Error auto-deleting timer:", error));
+                } catch (error) {
+                    console.error("Error in autoDeleteTimer:", error);
+                }
+            }
+
+            timers = timers.filter(t => t.id !== id);
+            renderTimers();
+            renderActivePlayers();
+            saveData();
+
+            alert(`${timer.name || '타이머'}의 시간이 모두 소모되어 자동으로 삭제되었습니다! 🗑️`);
         }
 
         // 플레이어 활성 상태 토글
@@ -650,7 +805,7 @@
             saveData();
         }
 
-        // 타이머 시작/정지
+        // 타이머 시작/정지 (개선된 버전)
         function toggleTimer(id) {
             if (!isAdmin) {
                 alert('❌ 관리자만 타이머를 제어할 수 있습니다.');
@@ -663,12 +818,24 @@
             timer.lastUsed = Date.now();
 
             if (timer.isRunning) {
+                // 정지 - 남은 시간을 다시 설정
                 timer.isRunning = false;
                 const endTime = Date.now();
                 const usedTime = Math.floor((endTime - timer.startTime) / 1000);
                 const usedHours = Math.floor(usedTime / 3600);
                 const usedMinutes = Math.floor((usedTime % 3600) / 60);
 
+                // 남은 시간 계산
+                const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
+                const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
+
+                // 남은 시간을 다시 시간/분/초로 설정
+                timer.totalHours = Math.floor(remainingSeconds / 3600);
+                timer.totalMinutes = Math.floor((remainingSeconds % 3600) / 60);
+                timer.totalSeconds = remainingSeconds % 60;
+                timer.currentTime = 0; // 사용 시간 초기화
+
+                // 사용 로그 추가
                 const now = new Date();
                 const logEntry = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}: ${usedHours}시간 ${usedMinutes}분 사용`;
                 timer.usageLog.unshift(logEntry);
@@ -679,14 +846,16 @@
 
                 timer.startTime = null;
             } else {
+                // 시작
                 const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
-                if (totalSeconds <= timer.currentTime) {
-                    alert('보유 시간이 부족합니다!');
+                if (totalSeconds <= 0) {
+                    alert('설정된 시간이 없습니다!');
                     return;
                 }
 
                 timer.isRunning = true;
                 timer.startTime = Date.now();
+                timer.currentTime = 0; // 시작할 때 사용 시간 초기화
             }
 
             renderTimers();
@@ -705,7 +874,7 @@
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
-        // 타이머 업데이트
+        // 타이머 업데이트 (개선된 버전)
         function updateTimers() {
             let updated = false;
             const now = Date.now();
@@ -717,10 +886,16 @@
                         (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds
                     );
 
+                    // 시간이 다 소모되면 자동 삭제
                     if (timer.currentTime >= (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds) {
                         timer.isRunning = false;
                         timer.startTime = null;
-                        alert(`${timer.name || '타이머'}의 시간이 모두 소모되었습니다!`);
+                        timer.isActive = false;
+
+                        // 자동 삭제
+                        setTimeout(() => {
+                            autoDeleteTimer(timer.id);
+                        }, 1000);
                     }
 
                     updated = true;
@@ -792,6 +967,10 @@
                 const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
                 const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
 
+                // 30분 이하일 때 노란색 표시
+                const isWarning = remainingSeconds <= 1800 && remainingSeconds > 0;
+                const warningClass = isWarning ? 'warning' : '';
+
                 timerElement.innerHTML = `
                     <button class="star-btn ${timer.isActive ? 'active' : ''}" 
                             onclick="togglePlayerActive(${timer.id})" ${!isAdmin ? 'disabled' : ''}>
@@ -822,7 +1001,7 @@
                         </div>
                     </div>
                     
-                    <div class="timer-display ${timer.isRunning ? 'running' : ''}">
+                    <div class="timer-display ${timer.isRunning ? 'running' : ''} ${warningClass}">
                         <span>남은 시간</span>
                         <span style="font-family: 'Courier New', monospace; font-size: 18px;">${formatTime(remainingSeconds)}</span>
                     </div>
@@ -939,8 +1118,18 @@
 
         // 초기화 및 주기적 업데이트
         window.onload = function () {
+            // Firebase 초기화
+            initializeFirebase();
+
+            // 권한 상태 초기화
             updateAuthStatus();
-            loadData();
+
+            // 데이터 로드
+            setTimeout(() => {
+                loadData();
+            }, 1000); // Firebase 로딩 대기
+
+            // 매초마다 타이머 업데이트
             setInterval(updateTimers, 1000);
         };
     </script>
