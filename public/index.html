@@ -4,7 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>또롱쓰 시참시간 관리 사이트</title>
+    <title>또롱쓰 시참시간 관리 사이트 v2.3.0</title>
+
+    <!-- 캐시 방지 메타 태그 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <style>
         * {
             margin: 0;
@@ -38,12 +44,21 @@
             -webkit-text-fill-color: transparent;
         }
 
+        .version-info {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: -20px;
+            margin-bottom: 20px;
+        }
+
         .auth-status {
             text-align: center;
             margin-bottom: 20px;
             padding: 10px;
             border-radius: 8px;
-            background: #e3f2fd;
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
         }
 
         .auth-btn {
@@ -54,6 +69,14 @@
             color: white;
             border-radius: 5px;
             cursor: pointer;
+        }
+
+        .backup-btn {
+            background: #ff9800 !important;
+        }
+
+        .clear-btn {
+            background: #f44336 !important;
         }
 
         .modal {
@@ -76,14 +99,24 @@
             padding: 30px;
             border-radius: 15px;
             text-align: center;
+            max-width: 500px;
+            width: 90%;
         }
 
-        .modal input {
+        .modal input,
+        .modal textarea {
             padding: 10px;
             margin: 10px;
             border: 2px solid #ddd;
             border-radius: 8px;
-            width: 200px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .modal textarea {
+            height: 200px;
+            resize: vertical;
+            font-family: monospace;
         }
 
         .modal button {
@@ -432,13 +465,16 @@
 <body>
     <div class="container">
         <h1>⏰ 또롱쓰 시참시간 관리 사이트</h1>
-        <p style="text-align: center; color: #666; font-size: 14px; margin-top: -15px; margin-bottom: 20px;">Made by.
-            김쨔응</p>
+        <div class="version-info">
+            Made by. 김쨔응 | v2.3.0 (로컬 전용) | <span id="build-time"></span>
+        </div>
 
         <!-- 권한 상태 표시 -->
         <div class="auth-status" id="auth-status">
             <span id="user-role">👀 일반 사용자 모드 (조회만 가능)</span>
             <button class="auth-btn" id="admin-login-btn" onclick="showAdminLogin()">관리자 로그인</button>
+            <button class="auth-btn backup-btn" onclick="showBackupModal()">💾 데이터 백업/복원</button>
+            <button class="auth-btn clear-btn" onclick="clearAllData()">🗑️ 데이터 초기화</button>
         </div>
 
         <!-- 관리자 로그인 모달 -->
@@ -449,6 +485,26 @@
                 <div>
                     <button class="btn-success" onclick="adminLogin()">로그인</button>
                     <button class="btn-danger" onclick="hideAdminLogin()">취소</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 백업/복원 모달 -->
+        <div class="modal" id="backup-modal">
+            <div class="modal-content">
+                <h3>💾 데이터 백업/복원</h3>
+                <p>현재 데이터를 백업하거나 이전 백업을 복원할 수 있습니다.</p>
+                <div style="margin: 20px 0;">
+                    <button class="btn-success" onclick="downloadBackup()">📥 백업 다운로드</button>
+                    <button class="btn-success" onclick="document.getElementById('backup-file').click()">📤 백업
+                        업로드</button>
+                </div>
+                <input type="file" id="backup-file" accept=".json" style="display: none;"
+                    onchange="uploadBackup(event)">
+                <textarea id="backup-text" placeholder="또는 여기에 백업 데이터를 붙여넣기..."></textarea>
+                <div>
+                    <button class="btn-success" onclick="restoreFromText()">복원</button>
+                    <button class="btn-danger" onclick="hideBackupModal()">취소</button>
                 </div>
             </div>
         </div>
@@ -494,85 +550,151 @@
         <button class="add-timer-btn" onclick="addTimer()" id="add-timer-btn">+ 줄 추가</button>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script>
-        // 전역 변수 먼저 선언
+        // 전역 변수
         let timers = [];
         let timerIdCounter = 0;
         let isAdmin = false;
         let filteredTimers = [];
-        let isOnline = true;
-        let db = null;
 
         const adminPassword = "ddorong2025";
 
-        // Firebase 상태 표시 추가
-        function updateConnectionStatus() {
-            const authStatus = document.getElementById('auth-status');
-            if (isOnline && db) {
-                authStatus.style.borderLeft = '4px solid #28a745';
-                console.log('🟢 Firebase 연결됨');
-            } else {
-                authStatus.style.borderLeft = '4px solid #dc3545';
-                authStatus.title = '⚠️ 오프라인 모드 (로컬 저장만 가능)';
-                console.log('🔴 Firebase 연결 끊김 - 오프라인 모드');
-            }
+        // 앱 초기화
+        function initializeApp() {
+            console.log('🚀 또롱쓰 타이머 시작 - v2.3.0 (로컬 전용)');
+
+            // 빌드 시간 표시
+            const buildTimeElement = document.getElementById('build-time');
+            const now = new Date();
+            buildTimeElement.textContent = now.toLocaleString();
+
+            // 권한 상태 초기화
+            updateAuthStatus();
+
+            // 데이터 로드
+            loadLocalData();
+
+            // 매초마다 타이머 업데이트
+            setInterval(updateTimers, 1000);
+
+            // 자동 저장 (30초마다)
+            setInterval(saveData, 30000);
+
+            console.log('✅ 로컬 전용 모드로 초기화 완료');
         }
 
-        // Firebase 초기화 함수 (개선)
-        function initializeFirebase() {
-            try {
-                const firebaseConfig = {
-                    apiKey: "AIzaSyC58p7biMiAmXw6nGa3kTJyy2lgTq_9ZdY",
-                    authDomain: "ddorong-timer.firebaseapp.com",
-                    projectId: "ddorong-timer",
-                    storageBucket: "ddorong-timer.firebasestorage.app",
-                    messagingSenderId: "868980396992",
-                    appId: "1:868980396992:web:5cfa9346a557cd00412e25",
-                    measurementId: "G-P5Y6GLY1Y4"
-                };
+        // 백업/복원 모달
+        function showBackupModal() {
+            document.getElementById('backup-modal').style.display = 'block';
+        }
 
-                if (typeof firebase !== 'undefined') {
-                    firebase.initializeApp(firebaseConfig);
-                    db = firebase.firestore();
+        function hideBackupModal() {
+            document.getElementById('backup-modal').style.display = 'none';
+            document.getElementById('backup-text').value = '';
+        }
 
-                    // 연결 테스트
-                    db.collection('timers').limit(1).get()
-                        .then(() => {
-                            isOnline = true;
-                            console.log('✅ Firebase 연결 성공');
-                            updateConnectionStatus();
-                        })
-                        .catch((error) => {
-                            console.error('❌ Firebase 연결 실패:', error);
-                            isOnline = false;
-                            updateConnectionStatus();
-                        });
-                } else {
-                    throw new Error('Firebase not loaded');
+        function downloadBackup() {
+            const backup = {
+                version: '2.3.0',
+                timestamp: new Date().toISOString(),
+                timers: timers,
+                timerIdCounter: timerIdCounter
+            };
+
+            const dataStr = JSON.stringify(backup, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `ddorong-timer-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+
+            alert('✅ 백업 파일이 다운로드되었습니다!');
+        }
+
+        function uploadBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const backup = JSON.parse(e.target.result);
+                    restoreFromBackup(backup);
+                } catch (error) {
+                    alert('❌ 백업 파일이 올바르지 않습니다: ' + error.message);
                 }
+            };
+            reader.readAsText(file);
+        }
+
+        function restoreFromText() {
+            const backupText = document.getElementById('backup-text').value.trim();
+            if (!backupText) {
+                alert('❌ 백업 데이터를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const backup = JSON.parse(backupText);
+                restoreFromBackup(backup);
             } catch (error) {
-                console.error('❌ Firebase 초기화 실패:', error);
-                isOnline = false;
-                db = null;
-                updateConnectionStatus();
+                alert('❌ 백업 데이터가 올바르지 않습니다: ' + error.message);
             }
         }
 
-        // 관리자 로그인 모달 표시
+        function restoreFromBackup(backup) {
+            if (!backup.timers || !Array.isArray(backup.timers)) {
+                alert('❌ 올바른 백업 파일이 아닙니다.');
+                return;
+            }
+
+            if (confirm(`백업 데이터를 복원하시겠습니까?\n백업 시간: ${backup.timestamp || '알 수 없음'}\n타이머 개수: ${backup.timers.length}개\n\n현재 데이터는 모두 사라집니다!`)) {
+                timers = backup.timers;
+                timerIdCounter = backup.timerIdCounter || Math.max(...timers.map(t => parseInt(t.id)), 0) + 1;
+
+                // 데이터 정리
+                timers.forEach(timer => {
+                    if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
+                    if (timer.totalHours === undefined) timer.totalHours = 0;
+                    if (timer.isActive === undefined) timer.isActive = false;
+                    if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
+                    if (timer.usageLog === undefined) timer.usageLog = [];
+                    timer.isRunning = false; // 복원 시 모든 타이머 정지
+                    timer.startTime = null;
+                });
+
+                renderTimers();
+                saveData();
+                hideBackupModal();
+                alert('✅ 백업 데이터가 성공적으로 복원되었습니다!');
+            }
+        }
+
+        // 데이터 완전 초기화
+        function clearAllData() {
+            if (confirm('⚠️ 모든 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다!')) {
+                if (confirm('정말로 모든 타이머 데이터를 삭제하시겠습니까?')) {
+                    localStorage.clear();
+                    timers = [];
+                    timerIdCounter = 0;
+                    addTimer(); // 기본 타이머 하나 추가
+                    alert('✅ 모든 데이터가 초기화되었습니다.');
+                }
+            }
+        }
+
+        // 관리자 로그인
         function showAdminLogin() {
             document.getElementById('admin-modal').style.display = 'block';
             document.getElementById('admin-password').focus();
         }
 
-        // 관리자 로그인 모달 숨기기
         function hideAdminLogin() {
             document.getElementById('admin-modal').style.display = 'none';
             document.getElementById('admin-password').value = '';
         }
 
-        // 관리자 로그인
         function adminLogin() {
             const password = document.getElementById('admin-password').value;
             if (password === adminPassword) {
@@ -580,14 +702,13 @@
                 updateAuthStatus();
                 hideAdminLogin();
                 renderTimers();
-                alert('✅ 관리자 로그인 성공! 모든 기능을 사용할 수 있습니다.');
+                alert('✅ 관리자 로그인 성공!');
             } else {
                 alert('❌ 비밀번호가 잘못되었습니다.');
                 document.getElementById('admin-password').value = '';
             }
         }
 
-        // 관리자 로그아웃
         function adminLogout() {
             isAdmin = false;
             updateAuthStatus();
@@ -595,7 +716,6 @@
             alert('👋 관리자 로그아웃되었습니다.');
         }
 
-        // 권한 상태 업데이트
         function updateAuthStatus() {
             const userRole = document.getElementById('user-role');
             const loginBtn = document.getElementById('admin-login-btn');
@@ -614,185 +734,44 @@
             }
         }
 
-        // Enter 키로 로그인
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Enter' && document.getElementById('admin-modal').style.display === 'block') {
-                adminLogin();
-            }
-        });
-
-        // 개선된 데이터 로드
-        function loadData() {
-            // 먼저 로컬 데이터 로드
-            loadLocalData();
-
-            // Firebase 연결 시도
-            if (isOnline && db) {
-                showLoading(true);
-
+        function loadLocalData() {
+            const savedTimers = localStorage.getItem('timeManagerTimers');
+            if (savedTimers) {
                 try {
-                    db.collection('timers').get()
-                        .then((snapshot) => {
-                            const firebaseTimers = [];
-                            let firebaseIdCounter = 0;
-
-                            snapshot.forEach((doc) => {
-                                const timer = { id: doc.id, ...doc.data() };
-
-                                // 필요한 필드 추가
-                                if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
-                                if (timer.totalHours === undefined) timer.totalHours = 0;
-                                if (timer.isActive === undefined) timer.isActive = false;
-                                if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
-                                if (timer.usageLog === undefined) timer.usageLog = [];
-
-                                firebaseTimers.push(timer);
-                                firebaseIdCounter = Math.max(firebaseIdCounter, parseInt(timer.id) + 1);
-                            });
-
-                            // Firebase 데이터가 더 최신이면 사용
-                            if (firebaseTimers.length > 0) {
-                                timers = firebaseTimers;
-                                timerIdCounter = firebaseIdCounter;
-                                console.log('🔄 Firebase에서 데이터 로드됨');
-                            }
-
-                            renderTimers();
-                            showLoading(false);
-
-                            // 실시간 리스너 설정
-                            setupRealtimeListener();
-                        })
-                        .catch((error) => {
-                            console.error("Firebase 데이터 로드 실패:", error);
-                            isOnline = false;
-                            updateConnectionStatus();
-                            showLoading(false);
-                        });
-                } catch (error) {
-                    console.error("Firebase 연결 실패:", error);
-                    isOnline = false;
-                    updateConnectionStatus();
-                    showLoading(false);
-                }
-            }
-        }
-
-        // 실시간 리스너 설정 (분리)
-        function setupRealtimeListener() {
-            if (!isOnline || !db) return;
-
-            try {
-                db.collection('timers').onSnapshot((snapshot) => {
-                    const firebaseTimers = [];
-                    let firebaseIdCounter = 0;
-
-                    snapshot.forEach((doc) => {
-                        const timer = { id: doc.id, ...doc.data() };
-
+                    timers = JSON.parse(savedTimers);
+                    timers.forEach(timer => {
                         if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
                         if (timer.totalHours === undefined) timer.totalHours = 0;
                         if (timer.isActive === undefined) timer.isActive = false;
                         if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
                         if (timer.usageLog === undefined) timer.usageLog = [];
-
-                        firebaseTimers.push(timer);
-                        firebaseIdCounter = Math.max(firebaseIdCounter, parseInt(timer.id) + 1);
+                        // 새로고침 시 모든 타이머 정지
+                        timer.isRunning = false;
+                        timer.startTime = null;
                     });
-
-                    timers = firebaseTimers;
-                    timerIdCounter = firebaseIdCounter;
+                    timerIdCounter = Math.max(...timers.map(t => parseInt(t.id)), 0) + 1;
                     renderTimers();
-
-                    // 로컬에도 백업
-                    localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
-                }, (error) => {
-                    console.error("실시간 리스너 에러:", error);
-                    isOnline = false;
-                    updateConnectionStatus();
-                });
-            } catch (error) {
-                console.error("리스너 설정 실패:", error);
-                isOnline = false;
-                updateConnectionStatus();
-            }
-        }
-
-        // 로컬 스토리지에서 데이터 로드 (오프라인 백업)
-        function loadLocalData() {
-            const savedTimers = localStorage.getItem('timeManagerTimers');
-            if (savedTimers) {
-                timers = JSON.parse(savedTimers);
-                timers.forEach(timer => {
-                    if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
-                    if (timer.totalHours === undefined) timer.totalHours = 0;
-                    if (timer.isActive === undefined) timer.isActive = false;
-                    if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
-                });
-                timerIdCounter = Math.max(...timers.map(t => parseInt(t.id)), 0) + 1;
-                renderTimers();
+                    console.log('💾 로컬 데이터 로드 완료:', timers.length + '개 타이머');
+                } catch (error) {
+                    console.error('⚠️ 로컬 데이터 파싱 실패:', error.message);
+                    localStorage.removeItem('timeManagerTimers');
+                    addTimer();
+                }
             } else {
                 addTimer();
             }
         }
 
-        // 강화된 데이터 저장 (로컬 우선)
         function saveData() {
-            // 항상 로컬에 저장
             try {
                 localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
                 localStorage.setItem('timeManagerLastSave', Date.now().toString());
                 console.log('💾 로컬 저장 완료');
             } catch (error) {
-                console.error('로컬 저장 실패:', error);
-            }
-
-            // Firebase에도 저장 시도
-            if (isOnline && db) {
-                try {
-                    timers.forEach((timer, index) => {
-                        setTimeout(() => {
-                            db.collection('timers').doc(timer.id.toString()).set(timer)
-                                .then(() => {
-                                    console.log(`🔄 Firebase 저장 성공: ${timer.name || timer.id}`);
-                                })
-                                .catch(error => {
-                                    console.error("Firebase 저장 실패:", error);
-                                    if (error.code === 'permission-denied') {
-                                        alert('⚠️ Firebase 권한이 만료되었습니다. 관리자에게 문의하세요.');
-                                        isOnline = false;
-                                        updateConnectionStatus();
-                                    }
-                                });
-                        }, index * 100); // 순차적 저장으로 부하 분산
-                    });
-                } catch (error) {
-                    console.error("Firebase 저장 중 에러:", error);
-                    isOnline = false;
-                    updateConnectionStatus();
-                }
+                console.error('⚠️ 로컬 저장 실패:', error.message);
             }
         }
 
-        // 로딩 표시
-        function showLoading(show) {
-            const existingLoader = document.getElementById('loading');
-            if (show) {
-                if (!existingLoader) {
-                    const loader = document.createElement('div');
-                    loader.id = 'loading';
-                    loader.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.8);color:white;padding:20px;border-radius:10px;z-index:9999;';
-                    loader.innerHTML = '🔄 데이터 동기화 중...';
-                    document.body.appendChild(loader);
-                }
-            } else {
-                if (existingLoader) {
-                    existingLoader.remove();
-                }
-            }
-        }
-
-        // 새 타이머 추가
         function addTimer() {
             if (!isAdmin) {
                 alert('❌ 관리자만 타이머를 추가할 수 있습니다.');
@@ -819,7 +798,6 @@
             saveData();
         }
 
-        // 타이머 삭제 (Firebase에서도 삭제)
         function deleteTimer(id) {
             if (!isAdmin) {
                 alert('❌ 관리자만 타이머를 삭제할 수 있습니다.');
@@ -827,16 +805,6 @@
             }
 
             if (confirm('정말로 이 타이머를 삭제하시겠습니까?')) {
-                // Firebase에서 삭제
-                if (isOnline && db) {
-                    try {
-                        db.collection('timers').doc(id.toString()).delete()
-                            .catch(error => console.error("Error deleting timer:", error));
-                    } catch (error) {
-                        console.error("Error in deleteTimer:", error);
-                    }
-                }
-
                 timers = timers.filter(timer => timer.id !== id);
                 renderTimers();
                 renderActivePlayers();
@@ -844,20 +812,9 @@
             }
         }
 
-        // 시간 완전 소모 시 자동 삭제
         function autoDeleteTimer(id) {
             const timer = timers.find(t => t.id === id);
             if (!timer) return;
-
-            // Firebase에서 삭제
-            if (isOnline && db) {
-                try {
-                    db.collection('timers').doc(id.toString()).delete()
-                        .catch(error => console.error("Error auto-deleting timer:", error));
-                } catch (error) {
-                    console.error("Error in autoDeleteTimer:", error);
-                }
-            }
 
             timers = timers.filter(t => t.id !== id);
             renderTimers();
@@ -867,7 +824,6 @@
             alert(`${timer.name || '타이머'}의 시간이 모두 소모되어 자동으로 삭제되었습니다! 🗑️`);
         }
 
-        // 플레이어 활성 상태 토글
         function togglePlayerActive(id) {
             if (!isAdmin) {
                 alert('❌ 관리자만 플레이어 상태를 변경할 수 있습니다.');
@@ -896,7 +852,6 @@
             saveData();
         }
 
-        // 타이머 시작/정지 (개선된 버전)
         function toggleTimer(id) {
             if (!isAdmin) {
                 alert('❌ 관리자만 타이머를 제어할 수 있습니다.');
@@ -909,24 +864,20 @@
             timer.lastUsed = Date.now();
 
             if (timer.isRunning) {
-                // 정지 - 남은 시간을 다시 설정
                 timer.isRunning = false;
                 const endTime = Date.now();
                 const usedTime = Math.floor((endTime - timer.startTime) / 1000);
                 const usedHours = Math.floor(usedTime / 3600);
                 const usedMinutes = Math.floor((usedTime % 3600) / 60);
 
-                // 남은 시간 계산
                 const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
                 const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
 
-                // 남은 시간을 다시 시간/분/초로 설정
                 timer.totalHours = Math.floor(remainingSeconds / 3600);
                 timer.totalMinutes = Math.floor((remainingSeconds % 3600) / 60);
                 timer.totalSeconds = remainingSeconds % 60;
-                timer.currentTime = 0; // 사용 시간 초기화
+                timer.currentTime = 0;
 
-                // 사용 로그 추가
                 const now = new Date();
                 const logEntry = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}: ${usedHours}시간 ${usedMinutes}분 사용`;
                 timer.usageLog.unshift(logEntry);
@@ -937,7 +888,6 @@
 
                 timer.startTime = null;
             } else {
-                // 시작
                 const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
                 if (totalSeconds <= 0) {
                     alert('설정된 시간이 없습니다!');
@@ -946,14 +896,13 @@
 
                 timer.isRunning = true;
                 timer.startTime = Date.now();
-                timer.currentTime = 0; // 시작할 때 사용 시간 초기화
+                timer.currentTime = 0;
             }
 
             renderTimers();
             saveData();
         }
 
-        // 시간 형식 변환
         function formatTime(seconds) {
             if (isNaN(seconds) || seconds < 0) {
                 seconds = 0;
@@ -965,10 +914,8 @@
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
-        // 타이머 업데이트 (개선된 버전)
         function updateTimers() {
             let updated = false;
-            const now = Date.now();
 
             timers.forEach(timer => {
                 if (timer.isRunning && timer.startTime) {
@@ -977,13 +924,11 @@
                         (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds
                     );
 
-                    // 시간이 다 소모되면 자동 삭제
                     if (timer.currentTime >= (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds) {
                         timer.isRunning = false;
                         timer.startTime = null;
                         timer.isActive = false;
 
-                        // 자동 삭제
                         setTimeout(() => {
                             autoDeleteTimer(timer.id);
                         }, 1000);
@@ -999,7 +944,6 @@
             }
         }
 
-        // 타이머 필터링 및 정렬
         function getFilteredAndSortedTimers() {
             const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
             const sortBy = document.getElementById('sort-select')?.value || 'recent';
@@ -1036,12 +980,10 @@
             return filtered;
         }
 
-        // 타이머 필터링
         function filterTimers() {
             renderTimers();
         }
 
-        // 타이머 렌더링
         function renderTimers() {
             const container = document.getElementById('timers-container');
             container.innerHTML = '';
@@ -1058,7 +1000,6 @@
                 const totalSeconds = (timer.totalHours * 3600) + (timer.totalMinutes * 60) + timer.totalSeconds;
                 const remainingSeconds = Math.max(0, totalSeconds - timer.currentTime);
 
-                // 30분 이하일 때 노란색 표시
                 const isWarning = remainingSeconds <= 1800 && remainingSeconds > 0;
                 const warningClass = isWarning ? 'warning' : '';
 
@@ -1130,7 +1071,6 @@
             }
         }
 
-        // 현재 플레이 중인 멤버들 렌더링
         function renderActivePlayers() {
             const activePlayersList = document.getElementById('active-players-list');
             const activePlayers = timers.filter(timer => timer.isActive);
@@ -1157,7 +1097,6 @@
             }).join('');
         }
 
-        // 타이머 이름 업데이트
         function updateTimerName(id, name) {
             if (!isAdmin) return;
 
@@ -1170,7 +1109,6 @@
             }
         }
 
-        // 타이머 시간 업데이트
         function updateTimerHours(id, hours) {
             if (!isAdmin) return;
 
@@ -1207,21 +1145,26 @@
             }
         }
 
-        // 초기화 및 주기적 업데이트
+        // Enter 키 이벤트
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                if (document.getElementById('admin-modal').style.display === 'block') {
+                    adminLogin();
+                }
+            }
+        });
+
+        // 페이지 떠날 때 확인
+        window.addEventListener('beforeunload', function (e) {
+            if (timers.some(t => t.isRunning)) {
+                e.preventDefault();
+                e.returnValue = '실행 중인 타이머가 있습니다. 정말 페이지를 떠나시겠습니까?';
+            }
+        });
+
+        // 페이지 로드 시 초기화
         window.onload = function () {
-            // Firebase 초기화
-            initializeFirebase();
-
-            // 권한 상태 초기화
-            updateAuthStatus();
-
-            // 데이터 로드
-            setTimeout(() => {
-                loadData();
-            }, 1000); // Firebase 로딩 대기
-
-            // 매초마다 타이머 업데이트
-            setInterval(updateTimers, 1000);
+            initializeApp();
         };
     </script>
 </body>
