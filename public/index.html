@@ -507,10 +507,22 @@
 
         const adminPassword = "ddorong2025";
 
-        // Firebase 초기화 함수
+        // Firebase 상태 표시 추가
+        function updateConnectionStatus() {
+            const authStatus = document.getElementById('auth-status');
+            if (isOnline && db) {
+                authStatus.style.borderLeft = '4px solid #28a745';
+                console.log('🟢 Firebase 연결됨');
+            } else {
+                authStatus.style.borderLeft = '4px solid #dc3545';
+                authStatus.title = '⚠️ 오프라인 모드 (로컬 저장만 가능)';
+                console.log('🔴 Firebase 연결 끊김 - 오프라인 모드');
+            }
+        }
+
+        // Firebase 초기화 함수 (개선)
         function initializeFirebase() {
             try {
-                // Firebase 설정
                 const firebaseConfig = {
                     apiKey: "AIzaSyC58p7biMiAmXw6nGa3kTJyy2lgTq_9ZdY",
                     authDomain: "ddorong-timer.firebaseapp.com",
@@ -521,19 +533,30 @@
                     measurementId: "G-P5Y6GLY1Y4"
                 };
 
-                // Firebase 초기화
                 if (typeof firebase !== 'undefined') {
                     firebase.initializeApp(firebaseConfig);
                     db = firebase.firestore();
-                    isOnline = true;
-                    console.log('✅ Firebase 연결 성공');
+
+                    // 연결 테스트
+                    db.collection('timers').limit(1).get()
+                        .then(() => {
+                            isOnline = true;
+                            console.log('✅ Firebase 연결 성공');
+                            updateConnectionStatus();
+                        })
+                        .catch((error) => {
+                            console.error('❌ Firebase 연결 실패:', error);
+                            isOnline = false;
+                            updateConnectionStatus();
+                        });
                 } else {
                     throw new Error('Firebase not loaded');
                 }
             } catch (error) {
-                console.error('❌ Firebase 연결 실패:', error);
+                console.error('❌ Firebase 초기화 실패:', error);
                 isOnline = false;
                 db = null;
+                updateConnectionStatus();
             }
         }
 
@@ -598,48 +621,100 @@
             }
         });
 
-        // Firebase에서 데이터 로드
+        // 개선된 데이터 로드
         function loadData() {
-            if (!isOnline || !db) {
-                loadLocalData();
-                return;
-            }
+            // 먼저 로컬 데이터 로드
+            loadLocalData();
 
-            showLoading(true);
+            // Firebase 연결 시도
+            if (isOnline && db) {
+                showLoading(true);
+
+                try {
+                    db.collection('timers').get()
+                        .then((snapshot) => {
+                            const firebaseTimers = [];
+                            let firebaseIdCounter = 0;
+
+                            snapshot.forEach((doc) => {
+                                const timer = { id: doc.id, ...doc.data() };
+
+                                // 필요한 필드 추가
+                                if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
+                                if (timer.totalHours === undefined) timer.totalHours = 0;
+                                if (timer.isActive === undefined) timer.isActive = false;
+                                if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
+                                if (timer.usageLog === undefined) timer.usageLog = [];
+
+                                firebaseTimers.push(timer);
+                                firebaseIdCounter = Math.max(firebaseIdCounter, parseInt(timer.id) + 1);
+                            });
+
+                            // Firebase 데이터가 더 최신이면 사용
+                            if (firebaseTimers.length > 0) {
+                                timers = firebaseTimers;
+                                timerIdCounter = firebaseIdCounter;
+                                console.log('🔄 Firebase에서 데이터 로드됨');
+                            }
+
+                            renderTimers();
+                            showLoading(false);
+
+                            // 실시간 리스너 설정
+                            setupRealtimeListener();
+                        })
+                        .catch((error) => {
+                            console.error("Firebase 데이터 로드 실패:", error);
+                            isOnline = false;
+                            updateConnectionStatus();
+                            showLoading(false);
+                        });
+                } catch (error) {
+                    console.error("Firebase 연결 실패:", error);
+                    isOnline = false;
+                    updateConnectionStatus();
+                    showLoading(false);
+                }
+            }
+        }
+
+        // 실시간 리스너 설정 (분리)
+        function setupRealtimeListener() {
+            if (!isOnline || !db) return;
 
             try {
-                // 실시간 리스너 설정
                 db.collection('timers').onSnapshot((snapshot) => {
-                    timers = [];
-                    timerIdCounter = 0;
+                    const firebaseTimers = [];
+                    let firebaseIdCounter = 0;
 
                     snapshot.forEach((doc) => {
                         const timer = { id: doc.id, ...doc.data() };
 
-                        // 필요한 필드 추가
                         if (timer.totalSeconds === undefined) timer.totalSeconds = 0;
                         if (timer.totalHours === undefined) timer.totalHours = 0;
                         if (timer.isActive === undefined) timer.isActive = false;
                         if (timer.lastUsed === undefined) timer.lastUsed = Date.now();
                         if (timer.usageLog === undefined) timer.usageLog = [];
 
-                        timers.push(timer);
-                        timerIdCounter = Math.max(timerIdCounter, parseInt(timer.id) + 1);
+                        firebaseTimers.push(timer);
+                        firebaseIdCounter = Math.max(firebaseIdCounter, parseInt(timer.id) + 1);
                     });
 
+                    timers = firebaseTimers;
+                    timerIdCounter = firebaseIdCounter;
                     renderTimers();
-                    showLoading(false);
+
+                    // 로컬에도 백업
+                    localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
                 }, (error) => {
-                    console.error("Error loading data:", error);
+                    console.error("실시간 리스너 에러:", error);
                     isOnline = false;
-                    loadLocalData();
-                    showLoading(false);
+                    updateConnectionStatus();
                 });
             } catch (error) {
-                console.error("Error setting up listener:", error);
+                console.error("리스너 설정 실패:", error);
                 isOnline = false;
-                loadLocalData();
-                showLoading(false);
+                updateConnectionStatus();
             }
         }
 
@@ -661,25 +736,41 @@
             }
         }
 
-        // Firebase에 데이터 저장
+        // 강화된 데이터 저장 (로컬 우선)
         function saveData() {
-            // 로컬에도 백업 저장
-            localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
-
-            if (!isOnline || !db) return;
-
+            // 항상 로컬에 저장
             try {
-                // Firebase에 저장하되 각 타이머를 개별 문서로
-                timers.forEach(timer => {
-                    db.collection('timers').doc(timer.id.toString()).set(timer)
-                        .catch(error => {
-                            console.error("Error saving timer:", error);
-                            isOnline = false;
-                        });
-                });
+                localStorage.setItem('timeManagerTimers', JSON.stringify(timers));
+                localStorage.setItem('timeManagerLastSave', Date.now().toString());
+                console.log('💾 로컬 저장 완료');
             } catch (error) {
-                console.error("Error in saveData:", error);
-                isOnline = false;
+                console.error('로컬 저장 실패:', error);
+            }
+
+            // Firebase에도 저장 시도
+            if (isOnline && db) {
+                try {
+                    timers.forEach((timer, index) => {
+                        setTimeout(() => {
+                            db.collection('timers').doc(timer.id.toString()).set(timer)
+                                .then(() => {
+                                    console.log(`🔄 Firebase 저장 성공: ${timer.name || timer.id}`);
+                                })
+                                .catch(error => {
+                                    console.error("Firebase 저장 실패:", error);
+                                    if (error.code === 'permission-denied') {
+                                        alert('⚠️ Firebase 권한이 만료되었습니다. 관리자에게 문의하세요.');
+                                        isOnline = false;
+                                        updateConnectionStatus();
+                                    }
+                                });
+                        }, index * 100); // 순차적 저장으로 부하 분산
+                    });
+                } catch (error) {
+                    console.error("Firebase 저장 중 에러:", error);
+                    isOnline = false;
+                    updateConnectionStatus();
+                }
             }
         }
 
